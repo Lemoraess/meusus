@@ -93,6 +93,7 @@ let appState = JSON.parse(localStorage.getItem('sus_state') || 'null') || {
     {id:'a3',patientId:'A.C. #9012',date:'15/06/2025',time:'08:00',professional:'Dra. Souza',type:'followup',status:'canceled',cancelReason:'reasonCantAttend'},
   ]
 };
+if(!appState.adminNotifications) appState.adminNotifications = [];
 
 function saveState() {
   localStorage.setItem('sus_state', JSON.stringify(appState));
@@ -118,6 +119,10 @@ function applyTheme() {
   });
   localStorage.setItem('sus_dark', darkMode);
 }
+function toggleTheme() {
+  darkMode = !darkMode;
+  applyAll();
+}
 function applyFont() {
   document.documentElement.style.setProperty('--font-scale', fontScale/100);
   ['fontSlider','fontSliderLogin'].forEach(id => {
@@ -134,6 +139,30 @@ function applyContrast() {
     if(el) el.classList.toggle('active', highContrast);
   });
   localStorage.setItem('sus_contrast', highContrast);
+}
+function renderAdminNotifications() {
+  const notes = appState.adminNotifications || [];
+  if(!notes.length) return `<div class="empty"><p>${t('noNotifications') || 'Nenhuma notificação recente'}</p></div>`;
+  return notes.slice(0,3).map(n => `
+    <div class="admin-notif-item">
+      <div class="admin-notif-title">${n.title}</div>
+      <div class="admin-notif-detail">${n.detail || ''}</div>
+      <div class="admin-notif-meta">${n.date}</div>
+    </div>
+  `).join('');
+}
+function updateAdminNavDots() {
+  const alertsDot = document.getElementById('alertsNotifDot');
+  const communityDot = document.getElementById('communityNotifDot');
+  if(alertsDot) alertsDot.style.display = (appState.adminNotifications || []).some(n => n.type === 'alert') ? 'block' : 'none';
+  if(communityDot) communityDot.style.display = (appState.adminNotifications || []).some(n => n.type === 'community') ? 'block' : 'none';
+}
+function addAdminNotification(type, title, detail = '') {
+  if(!appState.adminNotifications) appState.adminNotifications = [];
+  appState.adminNotifications.unshift({id:'n'+Date.now(), type, title, detail, date:new Date().toLocaleDateString()});
+  if(appState.adminNotifications.length > 6) appState.adminNotifications.length = 6;
+  saveState();
+  updateAdminNavDots();
 }
 function applyLang() {
   const dict = (LANG && LANG[lang]) || {};
@@ -673,6 +702,7 @@ function renderAdminScreen(nav) {
   else if(nav==='reports') renderReports();
   else if(nav==='community') renderAdminCommunity();
   else if(nav==='alerts') renderAdminAlerts();
+  updateAdminNavDots();
 }
 
 /* ─── ADMIN DASHBOARD ─── */
@@ -709,6 +739,8 @@ function renderAdminDashboard() {
       <div class="stat-lbl">${t('activeAlerts')}</div>
     </div>` + `<div style="grid-column:1/-1;padding:0 0 8px"><button class="btn btn-gold btn-sm" style="width:100%;max-width:100%;margin:0" onclick="generateAptReport()"><i class="fa-solid fa-file-pdf"></i> ${t('generateReport')}</button></div>`;
   // Recent alerts
+  const dashNotifs = document.getElementById('dashNotifs');
+  dashNotifs.innerHTML = renderAdminNotifications();
   const dashAlerts = document.getElementById('dashAlerts');
   const alerts = appState.alerts.slice(0,2);
   dashAlerts.innerHTML = alerts.length ? alerts.map(a => `
@@ -1156,20 +1188,25 @@ function saveEditedActivity(id) {
     const reader = new FileReader();
     reader.onload = (e) => {
       act.photo = e.target.result;
-      saveState();
+      addAdminNotification('community', 'Atividade atualizada', act[titleKey]);
       showToast(t('saved') || 'Salvo com sucesso', 'success');
       adminNav('community');
     };
     reader.readAsDataURL(photoFile);
   } else {
-    saveState();
+    addAdminNotification('community', 'Atividade atualizada', act[titleKey]);
     showToast(t('saved') || 'Salvo com sucesso', 'success');
     adminNav('community');
   }
 }
 function toggleActivityVisibility(id, val) {
   const a = appState.activities.find(x=>x.id===id);
-  if(a) { a.visible=val; saveState(); showToast(val?'Atividade ativada':'Atividade ocultada', val?'success':'info'); }
+  if(a) {
+    const titleKey = lang==='pt'?'title_pt':lang==='en'?'title_en':'title_es';
+    a.visible=val;
+    addAdminNotification('community', val ? 'Atividade ativada' : 'Atividade ocultada', a[titleKey]);
+    showToast(val ? 'Atividade ativada' : 'Atividade ocultada', val ? 'success' : 'info');
+  }
 }
 function showNewActivityForm() { document.getElementById('adminActForm').classList.remove('hidden'); document.getElementById('newActName').focus(); }
 function hideNewActivityForm() { document.getElementById('adminActForm').classList.add('hidden'); }
@@ -1198,7 +1235,7 @@ function saveNewActivity() {
     reader.onload = (e) => {
       newActivity.photo = e.target.result;
       appState.activities.push(newActivity);
-      saveState();
+      addAdminNotification('community', 'Nova atividade criada', name);
       hideNewActivityForm();
       showToast(t('save'),'success');
       renderAdminCommunity();
@@ -1206,7 +1243,7 @@ function saveNewActivity() {
     reader.readAsDataURL(photoFile);
   } else {
     appState.activities.push(newActivity);
-    saveState();
+    addAdminNotification('community', 'Nova atividade criada', name);
     hideNewActivityForm();
     showToast(t('save'),'success');
     renderAdminCommunity();
@@ -1231,7 +1268,11 @@ function renderAdminAlerts() {
 }
 function toggleAlert(id) {
   const a = appState.alerts.find(x=>x.id===id);
-  if(a) { a.active=!a.active; saveState(); renderAdminAlerts(); }
+  if(a) {
+    a.active=!a.active;
+    addAdminNotification('alert', a.active ? 'Alerta ativado' : 'Alerta desativado', a.active ? 'O alerta está ativo.' : 'O alerta foi pausado.');
+    renderAdminAlerts();
+  }
 }
 function showNewAlertForm() { document.getElementById('adminAlertForm').classList.remove('hidden'); document.getElementById('newAlertMsg').focus(); }
 function hideNewAlertForm() { document.getElementById('adminAlertForm').classList.add('hidden'); }
@@ -1245,7 +1286,7 @@ function saveNewAlert() {
     id:'al'+Date.now(), text_pt:msg, text_en:msg, text_es:msg,
     active:true, until:fmt(until), createdAt:fmt(new Date())
   });
-  saveState();
+  addAdminNotification('alert', 'Novo alerta criado', msg);
   hideNewAlertForm();
   showToast(t('save'),'success');
   renderAdminAlerts();
@@ -1314,7 +1355,7 @@ function saveEditedAlert(id) {
   if(!msg) { showToast('Digite uma mensagem', 'error'); return; }
   a.text_pt = msg; a.text_en = msg; a.text_es = msg;
   a.active = status === 'active';
-  saveState();
+  addAdminNotification('alert', 'Alerta atualizado', msg);
   showToast(t('save'), 'success');
   adminNav('alerts');
 }

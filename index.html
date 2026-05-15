@@ -154,11 +154,11 @@ input,select,textarea{font-family:'Poppins',sans-serif}
 .badge{font-size:.62rem;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap}
 .badge-green{background:rgba(6,214,160,0.15);color:#028f6b}
 .badge-red{background:rgba(239,71,111,0.12);color:var(--pink)}
-.badge-yellow{background:rgba(255,209,102,0.2);color:#8c6500}
+.badge-yellow{background:rgba(255,209,102,0.25);color:var(--teal);font-weight:700}
 .badge-blue{background:rgba(17,138,178,0.12);color:var(--blue)}
 .badge-gray{background:var(--border);color:var(--text2)}
 .dark .badge-green{color:var(--emerald)}
-.dark .badge-yellow{color:var(--gold)}
+.dark .badge-yellow{color:var(--teal)}
 
 .divider{height:1px;background:var(--border);margin:12px 0}
 
@@ -285,11 +285,15 @@ input:checked + .toggle-slider::before{transform:translateX(20px)}
 .alert-admin-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
 .alert-admin-text{font-size:.82rem;margin-bottom:4px}
 .alert-admin-meta{font-size:.7rem;color:var(--text2)}
+.admin-notif-item{background:rgba(255,209,102,0.14);border-left:4px solid var(--blue);border-radius:var(--radius-sm);padding:12px 14px;box-shadow:var(--shadow);margin-bottom:10px}
+.admin-notif-title{font-size:.82rem;font-weight:700;color:var(--blue);margin-bottom:6px}
+.admin-notif-detail{font-size:.78rem;color:var(--text2);line-height:1.4}
+.admin-notif-meta{font-size:.68rem;color:var(--text2);margin-top:8px}
 
 /* ═══════════════════════════════════════════
    SESSION TIMER BAR
-═══════════════════════════════════════════ */
-.session-bar{background:rgba(255,209,102,0.15);border-bottom:1px solid rgba(255,209,102,0.3);padding:5px 16px;display:flex;align-items:center;justify-content:space-between;font-size:.68rem;color:var(--gold);font-weight:600}
+═══════════════════════════════════ */
+.session-bar{background:rgba(255,209,102,0.15);border-bottom:1px solid rgba(255,209,102,0.3);padding:5px 16px;display:flex;align-items:center;justify-content:space-between;font-size:.68rem;color:var(--blue);font-weight:600}
 .session-bar.hidden{display:none}
 .session-bar.urgent{background:rgba(239,71,111,0.12);border-color:rgba(239,71,111,0.3);color:var(--pink)}
 
@@ -319,7 +323,7 @@ input:checked + .toggle-slider::before{transform:translateX(20px)}
 .no-apt i{font-size:1.6rem;display:block;margin-bottom:6px;opacity:.3}
 
 /* notification dot */
-.notif-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--pink)}
+.notif-dot{position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:#ffd166;border:2px solid var(--blue);box-shadow:0 0 0 3px rgba(17,138,178,0.18)}
 
 /* print styles */
 @media print {
@@ -349,7 +353,6 @@ if(typeof selectRole === 'undefined') {
     <span class="a11y-label" aria-hidden="true">Aa</span>
     <input type="range" class="font-slider" min="100" max="200" value="100" id="fontSliderLogin" aria-label="Tamanho da fonte" step="10"/>
     <button class="a11y-btn" id="themeToggleLogin" aria-label="Alternar tema escuro/claro"><i class="fa-solid fa-moon"></i></button>
-    <button class="a11y-btn" id="contrastToggleLogin" aria-label="Alternar alto contraste"><i class="fa-solid fa-adjust"></i></button>
     <select class="lang-select" id="langSelectLogin" aria-label="Selecionar idioma">
       <option value="pt">🇧🇷 PT</option>
       <option value="en">🇺🇸 EN</option>
@@ -423,7 +426,6 @@ if(typeof selectRole === 'undefined') {
     <div class="a11y-bar" role="toolbar" aria-label="Barra de acessibilidade" id="a11yBar">
       <span class="a11y-label" aria-hidden="true">Aa</span>
       <input type="range" class="font-slider" min="100" max="200" value="100" id="fontSlider" aria-label="Tamanho da fonte" step="10"/>
-      <button class="a11y-btn" id="contrastToggle" aria-label="Alternar alto contraste"><i class="fa-solid fa-adjust"></i></button>
       <select class="lang-select" id="langSelect" aria-label="Selecionar idioma">
         <option value="pt">🇧🇷 PT</option>
         <option value="en">🇺🇸 EN</option>
@@ -561,6 +563,7 @@ if(typeof selectRole === 'undefined') {
         <div style="padding:16px 16px 8px;display:flex;justify-content:flex-end;gap:8px">
           <button class="btn btn-gold btn-sm" style="width:auto;padding:9px 18px" onclick="generateDashboardReport()"><i class="fa-solid fa-file-pdf"></i> Relatório Dashboard PDF</button>
         </div>
+        <div id="dashNotifs" style="padding:0 16px 10px"></div>
         <div class="section-head" style="padding-top:16px">
           <div class="section-title"><i class="fa-regular fa-bell" style="color:var(--pink)"></i><span data-t="recentAlerts"></span></div>
           <button class="section-action" onclick="adminNav('alerts')" data-t="manageAlerts"></button>
@@ -724,11 +727,13 @@ if(typeof selectRole === 'undefined') {
         <i class="fa-solid fa-comments"></i><span data-t="ombuds"></span>
         <span class="notif-dot" id="ombudsNotifDot" style="display:none"></span>
       </button>
-      <button class="nav-btn" data-anav="community" onclick="adminNav('community')" aria-label="Comunidade">
+      <button class="nav-btn" data-anav="community" onclick="adminNav('community')" aria-label="Comunidade" style="position:relative">
         <i class="fa-solid fa-people-group"></i><span data-t="comm"></span>
+        <span class="notif-dot" id="communityNotifDot" style="display:none"></span>
       </button>
-      <button class="nav-btn" data-anav="alerts" onclick="adminNav('alerts')" aria-label="Alertas">
+      <button class="nav-btn" data-anav="alerts" onclick="adminNav('alerts')" aria-label="Alertas" style="position:relative">
         <i class="fa-regular fa-bell"></i><span data-t="alertsNav"></span>
+        <span class="notif-dot" id="alertsNotifDot" style="display:none"></span>
       </button>
     </nav>
 
